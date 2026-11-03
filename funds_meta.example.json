@@ -1,0 +1,15 @@
+{
+  "SCHEME_CODE_FROM_WATCHLIST": {
+    "aum": "₹0,000 Cr",
+    "er": "0.00%",
+    "exit": "Describe the exit load",
+    "minSip": "₹0",
+    "manager": "Name",
+    "benchmark": "Index name",
+    "risk": "Risk level",
+    "hold": [["NSE_SYMBOL", 0.0], ["NSE_SYMBOL", 0.0]],
+    "cap": [0, 0, 0],
+    "sec": {"Sector name": 0},
+    "aumHist": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  }
+}

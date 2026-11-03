@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f9b78">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Portfolio Monitor</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tl:#f3f4f6;--tx:#1b1f27;--mu:#6b7280;--bd:#e5e7eb;--ac:#0f9b78;--ab:#e6f6f1;--at:#0b6b66;--up:#0f7a4f;--dn:#b42318;--wb:#fff3d6;--wt:#8a5a00;--rb:#fde8e6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1419;--card:#171d25;--tl:#1e2630;--tx:#e8edf2;--mu:#93a0ad;--bd:#2a3440;--ab:#0e3b33;--at:#7ee0c4;--up:#4ade80;--dn:#f87171;--wb:#3d3010;--wt:#fbbf24;--rb:#3d1414}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:440px;margin:0 auto;padding:14px 14px 0}
+.card{background:var(--card);border:.5px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mu{color:var(--mu);font-size:12px}.up{color:var(--up)}.dn{color:var(--dn)}.sm{font-size:13px}
+.h{font-size:12px;color:var(--mu);margin:12px 0 6px}
+button{font:inherit;font-size:13px;color:var(--tx);background:none;border:.5px solid var(--bd);border-radius:16px;padding:4px 12px;cursor:pointer}
+button.on{background:var(--ab);color:var(--at);border-color:var(--ac)}
+button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.wide{width:100%;padding:9px;border-radius:12px;margin-bottom:12px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;margin:4px 0 10px;border:.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+a{color:var(--ac)}
+.lg{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:.5px solid var(--bd)}
+.lg.tap{cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{background:var(--tl);border-radius:10px;padding:8px 10px;font-size:13px}
+.bar{height:8px;background:var(--bd);border-radius:4px;flex:1}.bar i{display:block;height:8px;background:var(--ac);border-radius:4px}
+.ev{display:flex;justify-content:space-between;gap:8px;background:var(--wb);color:var(--wt);padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px}
+.vd{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:500;white-space:nowrap}
+.vd.buy{background:var(--ab);color:var(--at)}.vd.hold{background:var(--wb);color:var(--wt)}.vd.sell{background:var(--rb);color:var(--dn)}
+.ring{position:relative;flex:none}.ring svg{display:block;width:100%;height:100%}
+.ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.3}
+table{width:100%;border-collapse:collapse;font-size:13px}td{padding:6px 0;border-top:.5px solid var(--bd)}td+td{text-align:right}
+nav{position:sticky;bottom:0;display:flex;justify-content:space-around;background:var(--card);border-top:.5px solid var(--bd);margin:0 -14px;padding:8px 0}
+nav button{border:0;border-radius:8px;color:var(--mu);display:flex;flex-direction:column;align-items:center;font-size:11px;padding:2px 12px}
+nav button.on{color:var(--ac);background:none;font-weight:500}
+nav svg{width:22px;height:22px}
+svg.chart{display:block;width:100%}
+.tl{border-left:2px solid var(--bd);margin-left:5px;padding-left:14px}.tl>div{position:relative;margin-bottom:12px}.tl .dot{position:absolute;left:-20px;top:6px}
+.note{font-size:12px;color:var(--mu);text-align:center;padding:4px 0 16px}
+.warn{background:var(--wb);color:var(--wt);border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:12px}
+</style></head><body>
+<div id="app"></div>
+<script>
+"use strict";
+const SER={'1M':['d',22],'6M':['d',126],'1Y':['d',260],'3Y':['w',156],'5Y':['w',270]};
+const PAL=['#0f9b78','#7c5cf0','#f59e0b','#ef6a5b','#3b82f6','#14b8a6','#ec4899','#84cc16'],GREY='#cbd0d8';
+const S={tab:'ov',by:'h',f:'all',d:null,p:'1Y',M:null,H:loadH(),msg:'',err:'',form:false,inst:null};
+const $=s=>document.querySelector(s);
+function loadH(){try{const a=JSON.parse(localStorage.getItem('pm.holdings')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function saveH(){try{localStorage.setItem('pm.holdings',JSON.stringify(S.H))}catch(e){S.msg='Could not save on this device. Browser storage may be blocked.'}}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const p2=n=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const sg=n=>n<0?'-':'+',cl=n=>n<0?'dn':'up',pct=(a,b)=>b?(a/b-1)*100:0;
+const val=i=>i.qty*i.price;
+const fmtT=iso=>new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+' IST';
+const fmtD=s=>{const d=new Date(s);return isNaN(d)?esc(s):d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})};
+const ago=iso=>{if(!iso)return'';const m=(Date.now()-new Date(iso))/6e4;return m<60?Math.max(1,Math.round(m))+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+
+/* ---------- data ---------- */
+const hold=(t,id)=>S.H.find(h=>h.t===t&&h.id===id);
+function ALL(){
+ if(!S.M)return[];const a=[];
+ for(const k in S.M.stocks||{}){const h=hold('st',k);a.push(Object.assign({},S.M.stocks[k],{id:k,t:'st',held:!!h,qty:h?h.qty:0,inv:h?h.inv:0}))}
+ for(const k in S.M.funds||{}){const h=hold('mf',k);a.push(Object.assign({},S.M.funds[k],{id:k,t:'mf',held:!!h,qty:h?h.qty:0,inv:h?h.inv:0}))}
+ return a}
+const HELD=()=>ALL().filter(i=>i.held).sort((a,b)=>val(b)-val(a));
+async function loadData(){
+ try{const r=await fetch('market.json',{cache:'no-store'});if(!r.ok)throw 0;S.M=await r.json();S.err=''}
+ catch(e){S.err='Could not load market data. Showing the last saved copy if there is one.'}
+ if(!S.form)draw()}
+const status=()=>S.err||(!S.M||!S.M.updated?'No market data yet. See the setup guide, step 6.':'Data updated '+fmtT(S.M.updated)+'. Prices can be delayed by 15 minutes or more.');
+
+/* ---------- charts ---------- */
+function donut(segs,size,center){
+ const T=segs.reduce((s,x)=>s+x.v,0)||1,C=314.16;let off=0;
+ const c=segs.map(x=>{const l=x.v/T*C,o=off;off+=l;return`<circle cx="70" cy="70" r="50" fill="none" stroke="${x.c}" stroke-width="18" stroke-dasharray="${l.toFixed(1)} ${(C-l).toFixed(1)}" stroke-dashoffset="${(-o).toFixed(1)}"/>`}).join('');
+ return`<div class="ring" style="width:${size}px;height:${size}px"><svg viewBox="0 0 140 140" style="transform:rotate(-90deg)" role="img"><title>Allocation chart</title><circle cx="70" cy="70" r="50" fill="none" stroke="var(--bd)" stroke-width="18"/>${c}</svg><div class="ctr">${center||''}</div></div>`}
+function gauge(s,size,fs){
+ const col=s>=70?'#0f9b78':s>=55?'#f59e0b':'#ef4444',l=s/100*125.66;
+ return`<div class="ring" style="width:${size}px;height:${size}px"><svg viewBox="0 0 50 50" style="transform:rotate(-90deg)" role="img"><title>Score ${s} of 100</title><circle cx="25" cy="25" r="20" fill="none" stroke="var(--bd)" stroke-width="6"/><circle cx="25" cy="25" r="20" fill="none" stroke="${col}" stroke-width="6" stroke-dasharray="${l.toFixed(1)} 125.66"/></svg><div class="ctr" style="font-size:${fs||13}px;font-weight:500">${s}</div></div>`}
+const line=(a,b,h)=>{h=h||110;if(!a||a.length<2)return'<div class="mu" style="padding:24px 0;text-align:center">No chart data yet</div>';
+ const all=a.concat(b||[]),mn=Math.min(...all),mx=Math.max(...all),n=a.length;
+ const P=x=>x.map((y,i)=>(i*320/(n-1)).toFixed(1)+','+(h-4-(y-mn)/(mx-mn||1)*(h-8)).toFixed(1)).join(' ');
+ return`<svg class="chart" viewBox="0 0 320 ${h}" role="img"><title>Price chart</title><polyline points="${P(a)}" fill="none" stroke="var(--ac)" stroke-width="2"/>${b?`<polyline points="${P(b)}" fill="none" stroke="var(--mu)" stroke-width="1.5" stroke-dasharray="4 3"/>`:''}</svg>`};
+function ser(i,p){const k=SER[p][0],n=SER[p][1];let a=(i[k]||[]).slice(-n),b=((S.M&&S.M.bench)||{})[k];b=(b||[]).slice(-n);const m=Math.min(a.length,b.length);
+ if(m>=2){a=a.slice(-m);b=b.slice(-m).map(v=>v*a[0]/b[0]);return[a,b]}return[a,null]}
+const bars=a=>{const mx=Math.max(...a),w=316/a.length;return`<svg class="chart" viewBox="0 0 320 90" role="img"><title>Monthly AUM</title>${a.map((v,k)=>`<rect x="${(k*w+2).toFixed(1)}" y="${(88-v/mx*80).toFixed(1)}" width="${(w-6).toFixed(1)}" height="${(v/mx*80).toFixed(1)}" rx="2" fill="#7c5cf0"/>`).join('')}</svg><div class="row mu"><span>12 months ago</span><span>Latest ${inr(a[a.length-1])} Cr</span></div>`};
+const legend=(segs,money)=>{const t=segs.reduce((s,x)=>s+x.v,0)||1;return segs.map(x=>`<div class="lg"><span class="dot" style="background:${x.c}"></span><span style="flex:1">${esc(x.label)}</span><span class="mu">${(x.v/t*100).toFixed(0)}%</span>${money?`<span style="width:84px;text-align:right">${inr(x.v)}</span>`:''}</div>`).join('')};
+const tbl=r=>`<table>${r.map(x=>`<tr>${x.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+const sec=(t,b)=>`<div class="card"><div class="h" style="margin-top:0">${t}</div>${b}</div>`;
+const nws=n=>n.map(x=>`<div style="padding:8px 0;border-top:.5px solid var(--bd)"><div class="sm">${x[3]?`<a href="${esc(x[3])}" target="_blank" rel="noopener">${esc(x[0])}</a>`:esc(x[0])}</div><div class="mu">${esc(x[1])}${x[2]?' · '+ago(x[2]):''}</div></div>`).join('');
+const evs=a=>a.map(x=>`<div class="ev"><span>${esc(x[0])}</span><span>${fmtD(x[1])}</span></div>`).join('');
+const empty=`<div class="card"><b>Add your first holding</b><div class="sm" style="margin:6px 0 10px">Tell the app what you own. Your holdings stay on this phone and are never uploaded.</div><button class="pri" data-a="manage">Add holding</button></div>`;
+const fsLabel=i=>i.t==='mf'?'Return score':'Fundamental';
+const head=(t,btn)=>`<div class="row"><b style="font-size:18px">${t}</b><span>${S.inst?'<button data-a="install">Install</button> ':''}<button data-a="refresh">Refresh</button>${btn?' <button data-a="manage">Edit</button>':''}</span></div><div class="mu" style="margin:2px 0 12px">${esc(status())}</div>`;
+const chips=(a,cur,key)=>`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${a.map(x=>`<button data-a="${key}" data-v="${x[0]}" class="${cur===x[0]?'on':''}">${x[1]}</button>`).join('')}</div>`;
+
+/* ---------- allocation ---------- */
+const SPECIAL=n=>n==='Not available'||n==='Other';
+function alloc(by,H){
+ const m={},add=(k,v)=>{m[k]=(m[k]||0)+v};
+ H.forEach(i=>{const v=val(i);
+  if(by==='h')return add(i.name,v);
+  if(by==='s'){const s=i.t==='st'?(i.sector?{[i.sector]:100}:null):(i.meta&&i.meta.sec);if(!s)return add('Not available',v);
+   let t=0;for(const k in s)t+=s[k];for(const k in s)add(k,v*s[k]/100);if(t<99)add('Other',v*(100-t)/100);return}
+  const c=i.t==='st'?(i.cap!=null?[0,1,2].map(k=>k===i.cap?100:0):null):(i.meta&&i.meta.cap);
+  if(!c)return add('Not available',v);
+  ['Large cap','Mid cap','Small cap'].forEach((n,k)=>{if(c[k])add(n,v*c[k]/100)})});
+ const e=Object.entries(m).sort((a,b)=>(SPECIAL(a[0])-SPECIAL(b[0]))||b[1]-a[1]);
+ return e.map((x,k)=>({label:x[0],v:x[1],c:SPECIAL(x[0])?GREY:PAL[k%PAL.length]}))}
+const hcolor=name=>{const s=alloc('h',HELD()).find(x=>x.label===name);return s?s.c:GREY};
+
+/* ---------- suggestions ---------- */
+function score(i){
+ const v={an:i.an?(i.an[0]*100+i.an[1]*50)/((i.an[0]+i.an[1]+i.an[2])||1):null,fs:i.fs,ms:i.ms,ns:i.ns},W=[['an',.4],['fs',.3],['ms',.15],['ns',.15]];
+ let s=0,w=0,n=0;W.forEach(([k,x])=>{if(v[k]!=null){s+=v[k]*x;w+=x;n++}});return w?{s:Math.round(s/w),n}:null}
+const verdict=s=>s>=70?['Buy / Add','buy']:s>=55?['Hold','hold']:['Reduce / Avoid','sell'];
+function why(i){const r=[];
+ if(i.an){const n=i.an[0]+i.an[1]+i.an[2];r.push(i.an[0]/n>=.6?'Most analysts say buy.':i.an[2]/n>=.3?'Many analysts say sell.':'Analysts are mixed.')}
+ if(i.fs!=null)r.push(i.fs>=70?(i.t==='mf'?'Strong long-term returns.':'Strong fundamentals.'):i.fs<40?(i.t==='mf'?'Weak long-term returns.':'Weak fundamentals.'):'');
+ if(i.ms!=null)r.push(i.ms>=65?'Price trend is positive.':i.ms<40?'Price trend is weak.':'');
+ if(i.ns!=null)r.push(i.ns>=60?'Recent news is mostly positive.':i.ns<=40?'Recent news is mostly negative.':'');
+ return r.filter(Boolean).join(' ')||'Not enough data for a view yet.'}
+function scard(i){
+ const sc=score(i);if(!sc)return'<div class="sm mu">Not enough data for a suggestion yet.</div>';
+ const v=verdict(sc.s),up=i.tg?pct(i.tg,i.price):null;
+ return`<div style="display:flex;align-items:center;gap:12px">${gauge(sc.s,56,15)}<div><span class="vd ${v[1]}">${v[0]}</span><div class="mu" style="margin-top:4px">${why(i)}</div></div></div>
+ <div class="g2" style="margin-top:10px">${i.fs!=null?`<div class="tile">${fsLabel(i)}<span style="float:right">${i.fs}</span></div>`:''}${i.ms!=null?`<div class="tile">Momentum<span style="float:right">${i.ms}</span></div>`:''}${i.ns!=null?`<div class="tile">News tone<span style="float:right">${i.ns}</span></div>`:''}${up!=null?`<div class="tile">Avg target<span class="${cl(up)}" style="float:right">${sg(up)}${Math.abs(up).toFixed(0)}%</span></div>`:''}</div>
+ <div class="mu" style="margin-top:8px">Based on ${sc.n} of 4 factors. Not investment advice.</div>`}
+
+/* ---------- views ---------- */
+function ov(){
+ const H=HELD();let h=head('Portfolio',1);
+ if(!S.H.length)return h+empty;
+ const miss=S.H.filter(x=>!H.some(i=>i.t===x.t&&i.id===x.id)),warn=miss.length?`<div class="warn">No data yet for ${miss.map(x=>esc(x.id)).join(', ')}. Add ${miss.length>1?'them':'it'} to watchlist.json and wait for the next update.</div>`:'';
+ if(!H.length)return h+warn;
+ const T=H.reduce((s,i)=>s+val(i),0),inv=H.reduce((s,i)=>s+i.inv,0),d=H.reduce((s,i)=>s+i.qty*(i.price-i.prev),0),segs=alloc(S.by,H);
+ return h+`<div class="card">${chips([['h','By holding'],['s','By sector'],['c','By cap']],S.by,'by')}
+ <div style="display:flex;justify-content:center;margin:6px 0 10px">${donut(segs,190,`<span class="mu">Total value</span><b style="font-size:20px">${inr(T)}</b><span class="sm ${cl(d)}">${sg(d)}${inr(Math.abs(d))} today</span>`)}</div>
+ ${legend(segs,true)}${S.by!=='h'&&segs.some(x=>x.label==='Not available')?'<div class="mu" style="margin-top:6px">Fund details are missing for part of this view. Add them in funds_meta.json.</div>':''}</div>
+ <div class="g3" style="margin-bottom:12px"><div class="tile"><span class="mu">Invested</span><br><b>${inr(inv)}</b></div><div class="tile"><span class="mu">Profit</span><br><b class="${cl(T-inv)}">${sg(T-inv)}${inr(Math.abs(T-inv))}</b></div><div class="tile"><span class="mu">Returns</span><br><b class="${cl(T-inv)}">${sg(T-inv)}${Math.abs(pct(T,inv)).toFixed(1)}%</b></div></div>
+ <button class="wide" data-a="tab" data-v="ins">Portfolio insights ›</button>${warn}`}
+
+function hl(){
+ const H=HELD(),T=H.reduce((s,i)=>s+val(i),0),L=H.filter(i=>S.f==='all'||i.t===S.f);
+ let h=head('Holdings',1);if(!S.H.length)return h+empty;
+ return h+chips([['all','All'],['mf','Funds'],['st','Stocks']],S.f,'f')+`<div class="card" style="padding:2px 14px">${L.map((i,k)=>{const c=pct(i.price,i.prev);return`<div class="lg tap" data-a="open" data-v="${i.t}:${esc(i.id)}" style="${k?'':'border-top:0'}"><span class="dot" style="background:${hcolor(i.name)}"></span><span style="flex:1;min-width:0"><span class="sm">${esc(i.name)}</span><br><span class="mu">${(val(i)/T*100).toFixed(0)}% · ${i.qty.toLocaleString('en-IN')} ${i.t==='mf'?'units':'shares'}${i.stale?' · old data':''}</span></span><span style="text-align:right"><span class="sm">${inr(val(i))}</span><br><span class="mu ${cl(c)}">${sg(c)}${Math.abs(c).toFixed(2)}%</span></span></div>`}).join('')||'<div class="mu" style="padding:12px 0">Nothing here yet.</div>'}</div>
+ <button class="wide pri" data-a="manage">Add or edit holdings</button>`}
+
+function manage(){
+ const A=ALL(),opt=t=>A.filter(i=>i.t===t).map(i=>`<option value="${i.t}:${esc(i.id)}">${esc(i.name)} (${esc(i.id)})</option>`).join('');
+ return`<button data-a="back">‹ Back</button><div style="height:10px"></div>
+ ${S.msg?`<div class="warn">${esc(S.msg)}</div>`:''}
+ <div class="card"><div class="h" style="margin-top:0">Add to a holding</div>
+ <label class="sm">Stock or fund</label><select id="fsel"><optgroup label="Stocks">${opt('st')}</optgroup><optgroup label="Mutual funds">${opt('mf')}</optgroup></select>
+ <label class="sm">Shares or units bought</label><input id="fq" type="number" inputmode="decimal" min="0" step="any">
+ <label class="sm">Total amount paid (₹)</label><input id="fi" type="number" inputmode="decimal" min="0" step="any">
+ <button class="pri" data-a="add">Save holding</button><div class="mu" style="margin-top:8px">If you already hold it, these numbers are added to the existing holding.</div></div>
+ <div class="card"><div class="h" style="margin-top:0">Your holdings</div>${S.H.length?S.H.map((h,k)=>`<div class="row" style="padding:6px 0;border-top:.5px solid var(--bd)"><span class="sm">${esc(h.id)} · ${h.qty} ${h.t==='mf'?'units':'shares'} · ${inr(h.inv)}</span><button data-a="del" data-v="${k}">Remove</button></div>`).join(''):'<div class="mu">Nothing added yet.</div>'}</div>
+ <div class="card"><div class="h" style="margin-top:0">Backup and restore</div><textarea id="bk" rows="4" aria-label="Holdings backup">${esc(JSON.stringify(S.H))}</textarea><button data-a="import">Restore from this box</button><div class="mu" style="margin-top:8px">Copy this text somewhere safe. Clearing browser data deletes your holdings.</div></div>`}
+
+function detail(i){
+ const [a,b]=ser(i,S.p),mf=i.t==='mf',dp=pct(i.price,i.prev),M=i.meta||{};
+ let h=`<button data-a="back">‹ Back</button><div class="row" style="margin:12px 0"><div><b>${esc(i.name)}</b><div class="mu">${esc(i.sub)}</div></div><div style="text-align:right"><b>${p2(i.price)}</b><div class="sm ${cl(dp)}">${sg(dp)}${Math.abs(dp).toFixed(2)}%</div></div></div>
+ <div class="card">${chips(Object.keys(SER).map(k=>[k,k]),S.p,'per')}${line(a,b)}<div class="mu">Solid: ${mf?'NAV':'price'}${b?' · Dashed: Nifty 50':''}</div></div>`;
+ if(i.held){const v=val(i);h+=sec('Your position',tbl([[mf?'Units':'Shares',i.qty.toLocaleString('en-IN')],['Invested',inr(i.inv)],['Current value',inr(v)],['Profit or loss',`<span class="${cl(v-i.inv)}">${sg(v-i.inv)}${inr(Math.abs(v-i.inv))} (${pct(v,i.inv).toFixed(1)}%)</span>`]]))}
+ h+=sec('Suggestion',scard(i));
+ if(mf){
+  const R=i.ret||[],f=x=>x!=null?`<span class="${cl(x)}">${x}%</span>`:'-';
+  h+=sec('Returns (CAGR)',`<div class="g3"><div class="tile"><span class="mu">1 year</span><br><b>${f(R[0])}</b></div><div class="tile"><span class="mu">3 years</span><br><b>${f(R[1])}</b></div><div class="tile"><span class="mu">5 years</span><br><b>${f(R[2])}</b></div></div>`);
+  if(M.sec){const sg2=Object.entries(M.sec).map((x,k)=>({label:x[0],v:x[1],c:PAL[k%PAL.length]}));h+=sec('Sector split',`<div style="display:flex;align-items:center;gap:12px">${donut(sg2,96)}<div style="flex:1">${legend(sg2,false)}</div></div>`)}
+  const L=[['Fund house and category',i.sub],['NAV date',i.navdate?fmtD(i.navdate):null],['AUM',M.aum],['Expense ratio',M.er],['Exit load',M.exit],['Min SIP',M.minSip],['Fund manager',M.manager],['Benchmark',M.benchmark],['Risk level',M.risk]].filter(x=>x[1]);
+  h+=sec('Fund information',tbl(L.map(x=>[x[0],esc(x[1])]))+(M.aum?'':'<div class="mu" style="margin-top:8px">AUM, expense ratio and holdings are not in free data feeds. Add them in funds_meta.json.</div>'));
+  if(M.aumHist&&M.aumHist.length>1)h+=sec('AUM history (₹ crore, monthly)',bars(M.aumHist));
+  if(M.hold&&M.hold.length)h+=sec('Top holdings',tbl(M.hold.map(x=>[esc(x[0]),x[1]+'%'])));
+ }else{
+  if(i.an){const n=i.an[0]+i.an[1]+i.an[2],sg3=[{label:'Buy '+i.an[0],v:i.an[0],c:'#0f9b78'},{label:'Hold '+i.an[1],v:i.an[1],c:'#f59e0b'},{label:'Sell '+i.an[2],v:i.an[2],c:'#ef4444'}];
+   h+=sec('Analyst votes ('+n+')',`<div style="display:flex;align-items:center;gap:12px">${donut(sg3,96)}<div style="flex:1">${sg3.map(x=>`<div class="lg" style="border:0;padding:4px 0"><span class="dot" style="background:${x.c}"></span>${x.label}</div>`).join('')}</div></div>`)}
+  const K=[['P/E',i.pe!=null?i.pe.toFixed(1):null],['Dividend yield',i.dy!=null?(i.dy>0.2?i.dy:i.dy*100).toFixed(2)+'%':null],['52-week high',i.hi!=null?p2(i.hi):null],['52-week low',i.lo!=null?p2(i.lo):null],['Sector',i.sector],['Size',i.cap!=null?['Large cap','Mid cap','Small cap'][i.cap]:null]].filter(x=>x[1]);
+  if(K.length)h+=sec('Key data',`<div class="g2">${K.map(x=>`<div class="tile">${x[0]}<span style="float:right">${esc(x[1])}</span></div>`).join('')}</div>`);
+  if(i.dl!=null)h+=sec('Delivery data',`<div class="sm">Delivery <b>${i.dl}%</b> of traded volume${i.da!=null?` · recent average ${i.da}%`:''}</div>${i.da!=null?`<div class="mu ${i.dl>=i.da?'up':'dn'}">${i.dl>=i.da?'Above':'Below'} average</div>`:''}`);
+  if(i.act&&i.act.length)h+=sec('Corporate actions',evs(i.act));
+ }
+ if(i.news&&i.news.length)h+=sec('Latest news',nws(i.news));
+ return h}
+
+function sug(){
+ const A=ALL().map(i=>Object.assign(i,{sc:score(i)})).sort((x,y)=>(y.sc?y.sc.s:-1)-(x.sc?x.sc.s:-1));
+ return head('Ideas')+`<div class="card"><div class="sm">Score: analyst votes 40%, fundamentals 30%, momentum 15%, news tone 15%. Missing factors are left out and the rest are re-weighted.</div><div class="mu" style="margin-top:4px">Free data, not investment advice. Check big decisions with a SEBI-registered advisor.</div></div>
+ <div class="card" style="padding:2px 14px">${A.length?A.map((i,k)=>{const v=i.sc?verdict(i.sc.s):null;return`<div class="lg tap" data-a="open" data-v="${i.t}:${esc(i.id)}" style="${k?'':'border-top:0'}">${i.sc?gauge(i.sc.s,46,12):'<div style="width:46px;text-align:center" class="mu">-</div>'}<span style="flex:1;min-width:0"><b class="sm">${esc(i.name)}</b><br><span class="mu">${i.an?`${i.an[0]} Buy · ${i.an[1]} Hold · ${i.an[2]} Sell`:'No analyst votes'} · ${i.held?'Yours':'Watchlist'}</span></span>${v?`<span class="vd ${v[1]}">${v[0]}</span>`:''}</div>`}).join(''):'<div class="warn" style="margin:12px 0">No market data yet.</div>'}</div>`}
+
+function ins(){
+ const H=HELD();if(!H.length)return`<button data-a="tab" data-v="ov">‹ Back</button><div style="height:10px"></div>`+empty;
+ const T=H.reduce((s,i)=>s+val(i),0),wavg=k=>{const x=H.filter(i=>i[k]!=null),t=x.reduce((s,i)=>s+val(i),0);return t?x.reduce((s,i)=>s+i[k]*val(i),0)/t:null};
+ const fs=wavg('fs'),ms=wavg('ms'),cap=alloc('c',H),sc=alloc('s',H),m={};
+ H.forEach(i=>{if(i.t==='mf'){((i.meta&&i.meta.hold)||[]).forEach(x=>{m[x[0]]=m[x[0]]||[0,0];m[x[0]][0]+=val(i)*x[1]/100})}else{m[i.id]=m[i.id]||[0,0];m[i.id][1]+=val(i)}});
+ const cr=Object.entries(m).sort((x,y)=>(y[1][0]+y[1][1])-(x[1][0]+x[1][1])).slice(0,8);
+ const sc1=(t,x)=>`<div style="text-align:center">${x!=null?gauge(Math.round(x),68,17):'<div class="mu" style="width:68px;padding:22px 0">-</div>'}<div class="mu">${t}</div></div>`;
+ return`<button data-a="tab" data-v="ov">‹ Back</button><div style="height:10px"></div><b style="font-size:18px">Portfolio insights</b><div style="height:10px"></div>
+ <div class="card" style="display:flex;justify-content:space-around">${sc1('Fundamental / return',fs)}${sc1('Momentum',ms)}</div>
+ ${sec('Cap allocation (approximate)',`<div style="display:flex;align-items:center;gap:12px">${donut(cap,96)}<div style="flex:1">${legend(cap,false)}</div></div>`)}
+ ${sec('Sector allocation',`<div style="display:flex;align-items:center;gap:12px">${donut(sc,96)}<div style="flex:1">${legend(sc,false)}</div></div>`)}
+ ${sec('Consolidated holdings (funds + direct)',tbl([['Stock','Via funds','Direct','Total'],...cr.map(x=>[esc(x[0]),x[1][0]?inr(x[1][0]):'-',x[1][1]?inr(x[1][1]):'-',inr(x[1][0]+x[1][1])])]))}
+ ${H.some(i=>i.dl!=null)?sec('Delivery data (latest)',tbl(H.filter(i=>i.dl!=null).map(i=>[esc(i.id),i.dl+'%',i.da!=null?`<span class="${i.dl>=i.da?'up':'dn'}">${i.dl>=i.da?'Above':'Below'} ${i.da}% avg</span>`:'-']))):''}`}
+
+function upd(){
+ let A=HELD();if(!A.length)A=ALL();
+ const ev=[],nw=[];A.forEach(i=>{(i.act||[]).forEach(x=>ev.push([x[1],x[0],i.name,hcolor(i.name)]));(i.news||[]).forEach(x=>nw.push([i.id+': '+x[0],x[1],x[2],x[3]]))});
+ ev.sort((x,y)=>String(x[0]).localeCompare(String(y[0])));nw.sort((x,y)=>new Date(y[2]||0)-new Date(x[2]||0));
+ return head('Updates')+`<div class="mu" style="margin:-6px 0 10px">Corporate actions and news for ${HELD().length?'your holdings':'your watchlist'}</div>
+ ${ev.length?sec('Coming up',`<div class="tl">${ev.slice(0,12).map(x=>`<div><span class="dot" style="background:${x[3]}"></span><b>${fmtD(x[0])}</b> · ${esc(x[2])}<div class="mu">${esc(x[1])}</div></div>`).join('')}</div>`):''}
+ ${nw.length?sec('News',nws(nw.slice(0,25))):'<div class="warn">No news yet. It appears after the first full data update.</div>'}`}
+
+const IC={ov:'<circle cx="12" cy="12" r="8"/><path d="M12 4v8h8"/>',hl:'<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',sug:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',upd:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>'};
+function draw(){
+ const i=S.d&&ALL().find(x=>S.d===x.t+':'+x.id),on=!i&&!S.form?S.tab:'';
+ const body=S.form?manage():i?detail(i):S.tab==='ov'?ov():S.tab==='hl'?hl():S.tab==='sug'?sug():S.tab==='ins'?ins():upd();
+ $('#app').innerHTML=body+`<div class="note">Free data feeds, may be delayed or wrong. Not investment advice.</div><nav>${[['ov','Overview'],['hl','Holdings'],['sug','Ideas'],['upd','Updates']].map(x=>`<button data-a="tab" data-v="${x[0]}" class="${on===x[0]?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[x[0]]}</svg>${x[1]}</button>`).join('')}</nav>`}
+
+/* ---------- events ---------- */
+$('#app').onclick=e=>{
+ const t=e.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v;
+ if(a==='refresh'){S.err='';return loadData()}
+ if(a==='install'){if(S.inst){S.inst.prompt();S.inst=null}}
+ else if(a==='by')S.by=v;
+ else if(a==='f')S.f=v;
+ else if(a==='open'){S.d=v;window.scrollTo(0,0)}
+ else if(a==='back'){S.d=null;S.form=false;S.msg=''}
+ else if(a==='per')S.p=v;
+ else if(a==='tab'){S.tab=v;S.d=null;S.form=false;S.msg='';window.scrollTo(0,0)}
+ else if(a==='manage'){S.form=true;S.msg='';window.scrollTo(0,0)}
+ else if(a==='add'){
+  const [ty,id]=($('#fsel').value||':').split(':'),q=parseFloat($('#fq').value),n=parseFloat($('#fi').value);
+  if(!id||!(q>0)||!(n>=0)){S.msg='Choose a stock or fund, then enter the units bought and the total paid.'}
+  else{const ex=hold(ty,id);if(ex){ex.qty=+(ex.qty+q).toFixed(4);ex.inv+=n}else S.H.push({t:ty,id,qty:q,inv:n});saveH();S.msg='Saved.'}}
+ else if(a==='del'){S.H.splice(+v,1);saveH();S.msg='Removed.'}
+ else if(a==='import'){
+  try{const x=JSON.parse($('#bk').value);if(!Array.isArray(x)||x.some(h=>!h||!h.id||!(h.qty>=0)||!(h.inv>=0)||(h.t!=='st'&&h.t!=='mf')))throw 0;S.H=x;saveH();S.msg='Restored '+x.length+' holdings.'}
+  catch(err){S.msg='That backup text is not valid. Paste the full text you copied earlier.'}}
+ draw()};
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();S.inst=e;if(!S.form)draw()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadData()});
+setInterval(()=>{if(document.visibilityState==='visible')loadData()},300000);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+draw();loadData();
+</script></body></html>
