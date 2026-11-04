@@ -154,15 +154,42 @@ function hl(){
  return h+chips([['all','All'],['mf','Funds'],['st','Stocks']],S.f,'f')+`<div class="card" style="padding:2px 14px">${L.map((i,k)=>{const c=pct(i.price,i.prev);return`<div class="lg tap" data-a="open" data-v="${i.t}:${esc(i.id)}" style="${k?'':'border-top:0'}"><span class="dot" style="background:${hcolor(i.name)}"></span><span style="flex:1;min-width:0"><span class="sm">${esc(i.name)}</span><br><span class="mu">${(val(i)/T*100).toFixed(0)}% · ${i.qty.toLocaleString('en-IN')} ${i.t==='mf'?'units':'shares'}${i.stale?' · old data':''}</span></span><span style="text-align:right"><span class="sm">${inr(val(i))}</span><br><span class="mu ${cl(c)}">${sg(c)}${Math.abs(c).toFixed(2)}%</span></span></div>`}).join('')||'<div class="mu" style="padding:12px 0">Nothing here yet.</div>'}</div>
  <button class="wide pri" data-a="manage">Add or edit holdings</button>`}
 
+function resultsHTML(){
+ const q=(S.q||'').trim().toLowerCase();
+ if(!q)return'<div class="mu">Type a stock or fund name, an NSE symbol, or a fund scheme code.</div>';
+ const A=ALL().filter(i=>(i.name+' '+i.id+' '+(i.sub||'')).toLowerCase().includes(q)).slice(0,8);
+ const row=(v,t,s2)=>`<div class="lg tap" data-a="pick" data-v="${esc(v)}"><div style="flex:1;min-width:0"><div class="sm" style="font-weight:500">${esc(t)}</div><div class="mu">${esc(s2)}</div></div></div>`;
+ let h=A.map(i=>row(i.t+':'+i.id,i.name,(i.t==='mf'?'Mutual fund · code ':'Stock · ')+i.id)).join('');
+ const F=(S.fsearch||[]).filter(x=>!A.some(i=>i.t==='mf'&&i.id===String(x.schemeCode))).slice(0,10);
+ if(F.length)h+='<div class="h">More mutual funds (prices need one extra step)</div>'+F.map(x=>row('mf:'+x.schemeCode,x.schemeName,'Mutual fund · code '+x.schemeCode)).join('');
+ else if(S.fbusy)h+='<div class="mu" style="padding:6px 0">Searching mutual funds...</div>';
+ else if(S.ferr)h+='<div class="mu" style="padding:6px 0">Fund search is not available right now. Type the scheme code instead.</div>';
+ if(/^\d{4,7}$/.test(q)&&!A.some(i=>i.t==='mf'&&i.id===q))h+=row('mf:'+q,'Use mutual fund scheme code '+q,'Prices need one extra step');
+ if(/^[a-z0-9&-]{1,15}$/i.test(q)&&!/^\d+$/.test(q)&&!A.some(i=>i.t==='st'&&i.id.toLowerCase()===q))h+=row('st:'+q.toUpperCase(),'Use NSE symbol '+q.toUpperCase(),'Prices need one extra step');
+ return h||'<div class="mu">No match.</div>'}
+let _ft=0;
+function fundSearch(q){
+ clearTimeout(_ft);S.fsearch=[];S.ferr=false;
+ if(q.length<3||/^\d+$/.test(q)){S.fbusy=false;return}
+ S.fbusy=true;
+ _ft=setTimeout(async()=>{
+  try{const r=await fetch('https://api.mfapi.in/mf/search?q='+encodeURIComponent(q)),a=await r.json();
+   if((S.q||'').trim().toLowerCase()!==q)return;
+   S.fsearch=Array.isArray(a)?a.slice(0,30):[];S.fnames=S.fnames||{};S.fsearch.forEach(x=>{S.fnames[String(x.schemeCode)]=x.schemeName})}
+  catch(e){S.fsearch=[];S.ferr=true}
+  S.fbusy=false;const el=$('#res');if(el)el.innerHTML=resultsHTML()},400)}
+
 function manage(){
- const A=ALL(),opt=t=>A.filter(i=>i.t===t).map(i=>`<option value="${i.t}:${esc(i.id)}">${esc(i.name)} (${esc(i.id)})</option>`).join('');
+ const A=ALL(),miss=S.H.filter(h=>!A.some(i=>i.t===h.t&&i.id===h.id)),p=S.pick,nF=A.filter(i=>i.t==='mf').length;
  return`<button data-a="back">‹ Back</button><div style="height:10px"></div>
  ${S.msg?`<div class="warn">${esc(S.msg)}</div>`:''}
  <div class="card"><div class="h" style="margin-top:0">Add to a holding</div>
- <label class="sm">Stock or fund</label><select id="fsel"><optgroup label="Stocks">${opt('st')}</optgroup><optgroup label="Mutual funds">${opt('mf')}</optgroup></select>
- <label class="sm">Shares or units bought</label><input id="fq" type="number" inputmode="decimal" min="0" step="any">
+ ${p?`<div class="lg" style="border:0;padding-top:0"><div style="flex:1;min-width:0"><div class="sm" style="font-weight:500">${esc(p.name)}</div><div class="mu">${p.t==='mf'?'Mutual fund · code ':'Stock · '}${esc(p.id)}${p.tracked?'':' · prices not loaded yet'}</div></div><button data-a="unpick">Change</button></div>
+ <label class="sm">${p.t==='mf'?'Units':'Shares'} bought</label><input id="fq" type="number" inputmode="decimal" min="0" step="any">
  <label class="sm">Total amount paid (₹)</label><input id="fi" type="number" inputmode="decimal" min="0" step="any">
- <button class="pri" data-a="add">Save holding</button><div class="mu" style="margin-top:8px">If you already hold it, these numbers are added to the existing holding.</div></div>
+ <button class="pri" data-a="add">Save holding</button><div class="mu" style="margin-top:8px">If you already hold it, these numbers are added to the existing holding.</div>`
+ :`<label class="sm" for="q">Search stock or mutual fund</label><input id="q" type="search" placeholder="Name, symbol or scheme code" autocomplete="off" value="${esc(S.q||'')}"><div id="res">${resultsHTML()}</div>${nF?'':'<div class="warn" style="margin-top:8px">No mutual funds are loaded in the app yet. You can still search any fund by name above.</div>'}`}</div>
+ ${miss.length?`<div class="card"><div class="h" style="margin-top:0">Needs prices</div><div class="sm">These holdings are saved but have no price data yet. On GitHub open <b>watchlist.json</b>, tap the pencil icon, and add:</div>${miss.map(h=>`<div class="lg"><span class="sm" style="flex:1"><b>"${esc(h.id)}"</b> to the ${h.t==='mf'?'"funds"':'"stocks"'} list</span></div>`).join('')}<div class="mu">Separate items with commas, then Commit. Prices appear after the next data update, about 2 minutes later.</div></div>`:''}
  <div class="card"><div class="h" style="margin-top:0">Your holdings</div>${S.H.length?S.H.map((h,k)=>`<div class="row" style="padding:6px 0;border-top:.5px solid var(--bd)"><span class="sm">${esc(h.id)} · ${h.qty} ${h.t==='mf'?'units':'shares'} · ${inr(h.inv)}</span><button data-a="del" data-v="${k}">Remove</button></div>`).join(''):'<div class="mu">Nothing added yet.</div>'}</div>
  <div class="card"><div class="h" style="margin-top:0">Backup and restore</div><textarea id="bk" rows="4" aria-label="Holdings backup">${esc(JSON.stringify(S.H))}</textarea><button data-a="import">Restore from this box</button><div class="mu" style="margin-top:8px">Copy this text somewhere safe. Clearing browser data deletes your holdings.</div></div>`}
 
@@ -235,16 +262,20 @@ $('#app').onclick=e=>{
  else if(a==='back'){S.d=null;S.form=false;S.msg=''}
  else if(a==='per')S.p=v;
  else if(a==='tab'){S.tab=v;S.d=null;S.form=false;S.msg='';window.scrollTo(0,0)}
- else if(a==='manage'){S.form=true;S.msg='';window.scrollTo(0,0)}
+ else if(a==='manage'){S.form=true;S.msg='';S.pick=null;S.q='';S.fsearch=[];window.scrollTo(0,0)}
+ else if(a==='pick'){const t=v.slice(0,2),id=v.slice(3),it=ALL().find(x=>x.t===t&&x.id===id);S.pick={t,id,name:it?it.name:((S.fnames&&S.fnames[id])||id),tracked:!!it};S.q='';S.fsearch=[]}
+ else if(a==='unpick')S.pick=null;
  else if(a==='add'){
-  const [ty,id]=($('#fsel').value||':').split(':'),q=parseFloat($('#fq').value),n=parseFloat($('#fi').value);
-  if(!id||!(q>0)||!(n>=0)){S.msg='Choose a stock or fund, then enter the units bought and the total paid.'}
-  else{const ex=hold(ty,id);if(ex){ex.qty=+(ex.qty+q).toFixed(4);ex.inv+=n}else S.H.push({t:ty,id,qty:q,inv:n});saveH();S.msg='Saved.'}}
+  const p=S.pick,q=parseFloat($('#fq').value),n=parseFloat($('#fi').value);
+  if(!p)S.msg='Search and choose a stock or fund first.';
+  else if(!(q>0)||!(n>=0))S.msg='Enter the '+(p.t==='mf'?'units':'shares')+' bought and the total paid.';
+  else{const ex=hold(p.t,p.id);if(ex){ex.qty=+(ex.qty+q).toFixed(4);ex.inv+=n}else S.H.push({t:p.t,id:p.id,qty:q,inv:n});saveH();S.msg=p.tracked?'Saved.':'Saved. Prices need one more step. See Needs prices below.';S.pick=null}}
  else if(a==='del'){S.H.splice(+v,1);saveH();S.msg='Removed.'}
  else if(a==='import'){
   try{const x=JSON.parse($('#bk').value);if(!Array.isArray(x)||x.some(h=>!h||!h.id||!(h.qty>=0)||!(h.inv>=0)||(h.t!=='st'&&h.t!=='mf')))throw 0;S.H=x;saveH();S.msg='Restored '+x.length+' holdings.'}
   catch(err){S.msg='That backup text is not valid. Paste the full text you copied earlier.'}}
  draw()};
+$('#app').addEventListener('input',e=>{if(!e.target||e.target.id!=='q')return;S.q=e.target.value;const el=$('#res');if(el)el.innerHTML=resultsHTML();fundSearch(S.q.trim().toLowerCase())});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();S.inst=e;if(!S.form)draw()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadData()});
 setInterval(()=>{if(document.visibilityState==='visible')loadData()},300000);

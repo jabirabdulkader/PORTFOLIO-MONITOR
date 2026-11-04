@@ -19,6 +19,7 @@ import io
 import json
 import os
 import sys
+import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 
@@ -280,8 +281,19 @@ def nav_on(series, day):
     return None
 
 
+def get_json(url, tries=3):
+    last = None
+    for k in range(tries):
+        try:
+            return requests.get(url, headers=UA, timeout=60).json()
+        except Exception as e:
+            last = e
+            time.sleep(3 * (k + 1))
+    raise last
+
+
 def fund(code, old, amfi, meta):
-    r = requests.get("https://api.mfapi.in/mf/" + code, headers=UA, timeout=60).json()
+    r = get_json("https://api.mfapi.in/mf/" + code)
     series = []
     for row in r.get("data", []):
         try:
@@ -382,6 +394,11 @@ def main():
             if prev:
                 prev["stale"] = True
                 out["funds"][code] = prev
+            elif code in amfi:
+                a = amfi[code]
+                out["funds"][code] = {"code": code, "name": a["name"], "sub": "NAV only (history not loaded)",
+                                      "price": a["nav"], "prev": a["nav"], "navdate": a["date"], "d": [], "w": [],
+                                      "ret": [None, None, None], "fs": None, "ms": None, "meta": meta.get(code, {})}
 
     with open(os.path.join(DATA, "market.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
